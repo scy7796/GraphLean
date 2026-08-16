@@ -86,11 +86,11 @@ jobs:
           git apply --check "${excludes[@]}" /tmp/graphlean-v1.0.1.patch
           git apply "${excludes[@]}" /tmp/graphlean-v1.0.1.patch
           cp -a /tmp/graphlean-v1.0.1-overlay/. ./
-      - name: Remove bootstrap and generated release residue
+      - name: Remove bootstrap data and generated release residue
         shell: bash
         run: |
           rm -rf .bootstrap dist pre_release_validation
-          rm -f MANIFEST.json CHECKSUMS.sha256 .github/workflows/bootstrap-v1.0.1.yml
+          rm -f MANIFEST.json CHECKSUMS.sha256
       - name: Run fixed-source validation
         shell: bash
         run: |
@@ -100,13 +100,18 @@ jobs:
           python -B -m unittest discover -s tests -v
           python -B SELFTEST.py --source-tree
           node benchmarks/measure-context-surface.mjs
-      - name: Commit exact fixed source
+      - name: Commit non-workflow fixed source
         shell: bash
         run: |
+          git checkout HEAD -- .github/workflows/ci.yml .github/workflows/release.yml .github/workflows/bootstrap-v1.0.1.yml
           git add -A
           git diff --cached --check
           test -n "$(git status --porcelain)"
+          if git diff --cached --name-only | grep -q '^\.github/workflows/'; then
+            echo 'unexpected workflow mutation in bot commit' >&2
+            exit 1
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Harden v1.0.1 release pipeline and cross-platform validation'
+          git commit -m 'Apply v1.0.1 source hardening'
           git push origin HEAD:${GITHUB_REF_NAME}
