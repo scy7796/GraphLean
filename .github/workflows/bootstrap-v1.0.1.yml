@@ -1,0 +1,83 @@
+name: bootstrap-v1.0.1
+
+on:
+  push:
+    branches:
+      - fix/v1.0.1-release-loop
+
+permissions:
+  contents: write
+
+jobs:
+  apply-reviewed-fix:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - name: Canonicalize tracked source text
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          skip={'.git','.bootstrap','dist','build','__pycache__','.pytest_cache'}
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or any(part in skip for part in p.parts):
+                  continue
+              try:
+                  text=p.read_text(encoding='utf-8')
+              except UnicodeDecodeError:
+                  continue
+              text=text.replace('\r\n','\n').replace('\r','\n').rstrip('\n')+'\n'
+              p.write_text(text,encoding='utf-8',newline='\n')
+          PY
+      - name: Reconstruct and verify reviewed patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          import base64, hashlib, pathlib, zlib
+          parts=sorted(pathlib.Path('.bootstrap').glob('fix.z.b64.part*'))
+          assert len(parts)==3, f'expected 3 patch parts, got {len(parts)}'
+          encoded=''.join(p.read_text(encoding='ascii').strip() for p in parts)
+          compressed=base64.b64decode(encoded, validate=True)
+          patch=zlib.decompress(compressed)
+          got=hashlib.sha256(patch).hexdigest()
+          expected='b8895821e65c0bfc4eacb033652243f85d3e84ade7933fa378be3a6887fbe523'
+          assert got==expected, f'patch sha mismatch: {got}'
+          pathlib.Path('/tmp/graphlean-v1.0.1.patch').write_bytes(patch)
+          print('verified patch', got, 'bytes', len(patch))
+          PY
+          git apply --check /tmp/graphlean-v1.0.1.patch
+          git apply /tmp/graphlean-v1.0.1.patch
+      - name: Remove bootstrap and generated release residue
+        shell: bash
+        run: |
+          rm -rf .bootstrap dist pre_release_validation
+          rm -f MANIFEST.json CHECKSUMS.sha256 .github/workflows/bootstrap-v1.0.1.yml
+      - name: Run fixed-source validation
+        shell: bash
+        run: |
+          python -m pip install -r requirements-dev.txt
+          node --check dsh/index.js
+          node --check bin/graphleanctl.mjs
+          python -B -m unittest discover -s tests -v
+          python -B SELFTEST.py --source-tree
+          node benchmarks/measure-context-surface.mjs
+      - name: Commit exact fixed source
+        shell: bash
+        run: |
+          git add -A
+          git diff --cached --check
+          test -n "$(git status --porcelain)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Harden v1.0.1 release pipeline and cross-platform validation'
+          git push origin HEAD:${GITHUB_REF_NAME}
