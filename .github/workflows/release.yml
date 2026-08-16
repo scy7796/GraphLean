@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ['ci']
     types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -119,24 +120,9 @@ jobs:
         with:
           node-version: '22.19.0'
       - run: python -m pip install -r requirements-dev.txt
-      - name: Ensure immutable version tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          remote_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
-          if [[ -z "$remote_tag" ]]; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git tag "$RELEASE_TAG" "$RELEASE_SHA"
-            git push origin "refs/tags/$RELEASE_TAG"
-          else
-            git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
-            resolved="$(git rev-list -n1 "$RELEASE_TAG")"
-            [[ "$resolved" == "$RELEASE_SHA" ]] || { echo "$RELEASE_TAG points to $resolved, expected $RELEASE_SHA" >&2; exit 1; }
-          fi
       - name: Build deterministic release artifacts
         run: mkdir -p dist && python -B RELEASE.py --output-dir dist
-      - name: Create clean draft release and upload staged assets
+      - name: Create clean draft release and bind version tag
         shell: bash
         run: |
           set -euo pipefail
@@ -144,6 +130,15 @@ jobs:
             [[ "$(jq -r '.isDraft' /tmp/existing-release.json)" == "true" ]] || { echo "$RELEASE_TAG became published before verification" >&2; exit 1; }
             gh release delete "$RELEASE_TAG" --yes
           fi
+
+          tag_mode=(--target "$RELEASE_SHA")
+          remote_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+          if [[ -n "$remote_tag" ]]; then
+            git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            [[ "$(git rev-list -n1 "$RELEASE_TAG")" == "$RELEASE_SHA" ]] || { echo "$RELEASE_TAG does not resolve to $RELEASE_SHA" >&2; exit 1; }
+            tag_mode=(--verify-tag)
+          fi
+
           prerelease=()
           [[ "$RELEASE_TAG" == *-* ]] && prerelease=(--prerelease)
           gh release create "$RELEASE_TAG" \
@@ -155,7 +150,11 @@ jobs:
             --draft \
             --title "$RELEASE_TAG" \
             --notes-file GITHUB_RELEASE.md \
+            "${tag_mode[@]}" \
             "${prerelease[@]}"
+
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          [[ "$(git rev-list -n1 "$RELEASE_TAG")" == "$RELEASE_SHA" ]] || { echo "Draft tag binding mismatch" >&2; exit 1; }
       - name: Re-download GitHub release assets and verify exact bytes
         shell: bash
         run: |
