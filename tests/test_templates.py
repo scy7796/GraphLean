@@ -40,5 +40,3 @@ class TemplateTests(unittest.TestCase):
      self.assertTrue(ready, f"deadlock in {p.name} optional={selected_tuple} remaining={sorted(active-completed)}")
      completed.add(ready[0])
     self.assertEqual(active,completed)
-
-

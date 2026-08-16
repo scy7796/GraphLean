@@ -5,8 +5,8 @@ sys.dont_write_bytecode=True
 import argparse, datetime as dt, hashlib, json, os, secrets, shutil
 from pathlib import Path
 
-VERSION='1.0.0'; MARK_BEGIN='# GRAPHLEAN_V1_0_0_BEGIN'; MARK_END='# GRAPHLEAN_V1_0_0_END'
-META_NAME='.graphlean-installer-v1.0.0'
+VERSION='1.0.1'; MARK_BEGIN='# GRAPHLEAN_V1_0_1_BEGIN'; MARK_END='# GRAPHLEAN_V1_0_1_END'
+META_NAME='.graphlean-installer-v1.0.1'
 ROOT=Path(__file__).resolve().parent
 
 def file_sha(p: Path):
@@ -108,7 +108,10 @@ def main(argv=None):
         if target.exists() and not target.is_dir(): raise RuntimeError(f'GraphLean {label} target exists but is not a directory')
 
     import graphleanctl
-    if graphleanctl.cmd_selftest(ROOT): raise RuntimeError('release selftest failed; DSH was not modified')
+    has_manifest=(ROOT/'MANIFEST.json').is_file(); has_checksums=(ROOT/'CHECKSUMS.sha256').is_file()
+    if has_manifest != has_checksums: raise RuntimeError('partial release integrity metadata; install aborted before host changes')
+    source_tree=not has_manifest
+    if graphleanctl.cmd_selftest(ROOT, source_tree=source_tree): raise RuntimeError('package selftest failed; DSH was not modified')
 
     backup_id=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')+'-'+secrets.token_hex(4)
     backup=meta/'backups'/backup_id
@@ -169,4 +172,3 @@ def main(argv=None):
 if __name__=='__main__':
     try: raise SystemExit(main())
     except Exception as e: print(f'ERROR: {e}',file=sys.stderr); raise SystemExit(2)
-

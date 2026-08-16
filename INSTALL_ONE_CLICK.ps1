@@ -7,4 +7,3 @@ else { throw 'Python 3.9+ was not found on PATH.' }
 $exe = $Python[0]; $prefix = @(); if ($Python.Length -gt 1) { $prefix = $Python[1..($Python.Length-1)] }
 & $exe @prefix "$Root\INSTALL.py" --probe-dsh auto @args
 exit $LASTEXITCODE
-

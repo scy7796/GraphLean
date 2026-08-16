@@ -22,4 +22,3 @@ for (const [exe, prefix] of candidates) {
 
 console.error('graphleanctl: Python 3.9+ was not found on PATH.')
 process.exit(127)
-

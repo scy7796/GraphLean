@@ -18,5 +18,4 @@ GraphLean relies on DeepSeek Harness core and ToolExecution semantics, Node.js, 
 
 ## Release hygiene
 
-The release pipeline rejects common credential files and high-confidence secret patterns, symlinks, path traversal, cache/bytecode artifacts, and leaked user-home paths. Runtime receipts are designed to persist hashes and governance metadata rather than raw prompts, arguments, results, or source bodies.
-
+Source-checkout scanning ignores only development substrate such as `.git`, generated `dist/`, and build/cache directories. Strict staged-release scanning rejects those paths entirely, plus common credential files and high-confidence secret patterns, symlinks, path traversal, bytecode, and leaked user-home paths. Runtime receipts are designed to persist hashes and governance metadata rather than raw prompts, arguments, results, or source bodies.

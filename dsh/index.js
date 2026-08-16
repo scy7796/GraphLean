@@ -10,7 +10,7 @@ export const inject = ['tools']
 
 const ROOT = dirname(fileURLToPath(import.meta.url))
 const GRAPH_ROOT = existsSync(join(ROOT, 'graph')) ? join(ROOT, 'graph') : join(dirname(ROOT), 'graph')
-const INSTALLER_META = '.graphlean-installer-v1.0.0'
+const INSTALLER_META = '.graphlean-installer-v1.0.1'
 const CONTROL_TOOLS = new Set(['graphlean_begin', 'graphlean_status', 'graphlean_stage_candidate', 'graphlean_advance', 'graphlean_abort'])
 const TRANSPORT_TOOLS = new Set([])
 const READ_ONLY_TOOLS = new Set([
@@ -597,4 +597,3 @@ export function apply(ctx, config = {}) {
   })
 
 }
-

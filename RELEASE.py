@@ -5,7 +5,7 @@ import argparse, hashlib, json, os, shutil, subprocess, tarfile, tempfile, zipfi
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent
-VERSION='1.0.0'
+VERSION='1.0.1'
 BASENAME=f'graphlean-{VERSION}'
 EXCLUDED_NAMES={'MANIFEST.json','CHECKSUMS.sha256'}
 EXCLUDED_PARTS={'__pycache__','.pytest_cache','.git','dist','build'}
@@ -138,10 +138,7 @@ def main():
         (outdir/f'{tgz_path.name}.sha256').write_text(f'{th}  {tgz_path.name}\n',encoding='utf-8')
         (outdir/'SHA256SUMS.txt').write_text(f'{zh}  {zip_path.name}\n{th}  {tgz_path.name}\n',encoding='utf-8')
 
-        shutil.copy2(stage/'MANIFEST.json',ROOT/'MANIFEST.json')
-        shutil.copy2(stage/'CHECKSUMS.sha256',ROOT/'CHECKSUMS.sha256')
         print(f'RELEASE ZIP {zip_path}'); print(f'SHA256 {zh}')
         print(f'RELEASE DSH BUNDLE {tgz_path}'); print(f'SHA256 {th}')
 
 if __name__=='__main__': main()
-

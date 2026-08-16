@@ -14,4 +14,3 @@ Describe the host-governance behavior changed.
 ## Security boundary
 
 State whether the change expands the trusted computing base, tool effects, writable paths, approval surface, or persisted data.
-

@@ -4,7 +4,13 @@ ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT))
 import graphleanctl
 
 class PrivacyTests(unittest.TestCase):
- def test_release_is_clean(self): self.assertEqual([],graphleanctl.release_privacy_scan(ROOT))
+ def test_source_checkout_is_clean(self): self.assertEqual([],graphleanctl.source_privacy_scan(ROOT))
+ def test_source_and_release_privacy_modes_are_distinct(self):
+  with tempfile.TemporaryDirectory() as td:
+   root=Path(td); (root/'.git').mkdir(); (root/'.git'/'config').write_text('developer metadata'); (root/'dist').mkdir(); (root/'dist'/'artifact.zip').write_bytes(b'zip')
+   self.assertEqual([],graphleanctl.source_privacy_scan(root))
+   issues=graphleanctl.release_privacy_scan(root)
+   self.assertTrue(any('.git' in x for x in issues)); self.assertTrue(any('dist' in x for x in issues))
  def test_secret_filenames_and_tokens_are_rejected(self):
   with tempfile.TemporaryDirectory() as td:
    root=Path(td); (root/'.env').write_text('SAFE_PLACEHOLDER=1')
@@ -39,6 +45,3 @@ class PrivacyTests(unittest.TestCase):
    d=json.loads((root/'MANIFEST.json').read_text()); d['files']={'../escape.txt':'0'*64}; d['surprise']=True
    (root/'MANIFEST.json').write_text(json.dumps(d))
    with self.assertRaises(graphleanctl.ValidationError): graphleanctl.verify_release_manifest(root)
-
-
-
