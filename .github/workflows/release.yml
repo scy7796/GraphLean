@@ -176,10 +176,19 @@ jobs:
           set -euo pipefail
           gh release view "$RELEASE_TAG" --json isDraft,tagName,assets >/tmp/published-release.json
           python - <<'PY'
-          import json
+          import json, os
           d=json.load(open('/tmp/published-release.json',encoding='utf-8'))
-          expected={'graphlean-1.0.1.zip','graphlean-1.0.1.zip.sha256','graphlean-1.0.1.tgz','graphlean-1.0.1.tgz.sha256','SHA256SUMS.txt'}
+          tag=os.environ['RELEASE_TAG']
+          version=tag[1:] if tag.startswith('v') else tag
+          expected={
+              f'graphlean-{version}.zip',
+              f'graphlean-{version}.zip.sha256',
+              f'graphlean-{version}.tgz',
+              f'graphlean-{version}.tgz.sha256',
+              'SHA256SUMS.txt',
+          }
           assert d['isDraft'] is False
+          assert d['tagName'] == tag
           assert set(a['name'] for a in d['assets']) == expected
           PY
           git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
