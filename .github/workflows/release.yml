@@ -1,15 +1,76 @@
 name: release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ['ci']
+    types: [completed]
 
 permissions:
   contents: write
 
 jobs:
+  preflight:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.release.outputs.should_release }}
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Resolve version release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(git ls-remote origin refs/heads/main | cut -f1)"
+          echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          if [[ "$main_sha" != "$HEAD_SHA" ]]; then
+            echo "Main advanced beyond $HEAD_SHA; a newer CI completion owns release selection."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          version="$(node -p "require('./package.json').version")"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Unsupported package version: $version" >&2
+            exit 1
+          fi
+          tag="v$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          if gh release view "$tag" --json isDraft >/tmp/graphlean-release.json 2>/dev/null; then
+            if [[ "$(jq -r '.isDraft' /tmp/graphlean-release.json)" == "false" ]]; then
+              echo "Published release $tag already exists; nothing to do."
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          remote_tag="$(git ls-remote origin "refs/tags/$tag" | cut -f1)"
+          if [[ -n "$remote_tag" ]]; then
+            git fetch --force origin "refs/tags/$tag:refs/tags/$tag"
+            resolved="$(git rev-list -n1 "$tag")"
+            if [[ "$resolved" != "$HEAD_SHA" ]]; then
+              echo "Incomplete release tag $tag already points to $resolved, not $HEAD_SHA." >&2
+              exit 1
+            fi
+          fi
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "Release candidate: $tag @ $HEAD_SHA"
+
   test:
+    needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -20,6 +81,8 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -34,12 +97,19 @@ jobs:
       - run: python -B SELFTEST.py --source-tree
 
   release:
-    needs: test
+    needs: [preflight, test]
+    if: needs.preflight.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     env:
       PYTHONDONTWRITEBYTECODE: '1'
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.preflight.outputs.tag }}
+      RELEASE_SHA: ${{ needs.preflight.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.sha }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -47,35 +117,49 @@ jobs:
         with:
           node-version: '22.19.0'
       - run: python -m pip install -r requirements-dev.txt
-      - name: Verify tag matches package version
+      - name: Ensure immutable version tag
+        shell: bash
         run: |
-          python - <<'PY'
-          import json, os
-          version=json.load(open('package.json',encoding='utf-8'))['version']
-          tag=os.environ['GITHUB_REF_NAME']
-          assert tag == 'v'+version, f'tag {tag} != package v{version}'
-          print('tag/version match:', tag)
-          PY
-      - run: mkdir -p dist && python -B RELEASE.py --output-dir dist
-      - name: Create draft release and upload staged assets
-        uses: softprops/action-gh-release@v2
-        with:
-          body_path: GITHUB_RELEASE.md
-          draft: true
-          prerelease: ${{ contains(github.ref_name, '-rc.') }}
-          fail_on_unmatched_files: true
-          files: |
-            dist/graphlean-*.zip
-            dist/graphlean-*.zip.sha256
-            dist/graphlean-*.tgz
-            dist/graphlean-*.tgz.sha256
-            dist/SHA256SUMS.txt
+          set -euo pipefail
+          remote_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+          if [[ -z "$remote_tag" ]]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag "$RELEASE_TAG" "$RELEASE_SHA"
+            git push origin "refs/tags/$RELEASE_TAG"
+          else
+            git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            resolved="$(git rev-list -n1 "$RELEASE_TAG")"
+            [[ "$resolved" == "$RELEASE_SHA" ]] || { echo "$RELEASE_TAG points to $resolved, expected $RELEASE_SHA" >&2; exit 1; }
+          fi
+      - name: Build deterministic release artifacts
+        run: mkdir -p dist && python -B RELEASE.py --output-dir dist
+      - name: Create clean draft release and upload staged assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --json isDraft >/tmp/existing-release.json 2>/dev/null; then
+            [[ "$(jq -r '.isDraft' /tmp/existing-release.json)" == "true" ]] || { echo "$RELEASE_TAG became published before verification" >&2; exit 1; }
+            gh release delete "$RELEASE_TAG" --yes
+          fi
+          prerelease=()
+          [[ "$RELEASE_TAG" == *-rc.* ]] && prerelease=(--prerelease)
+          gh release create "$RELEASE_TAG" \
+            dist/graphlean-*.zip \
+            dist/graphlean-*.zip.sha256 \
+            dist/graphlean-*.tgz \
+            dist/graphlean-*.tgz.sha256 \
+            dist/SHA256SUMS.txt \
+            --draft \
+            --title "$RELEASE_TAG" \
+            --notes-file GITHUB_RELEASE.md \
+            "${prerelease[@]}"
       - name: Re-download GitHub release assets and verify exact bytes
-        env:
-          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          set -euo pipefail
           rm -rf redownload && mkdir redownload
-          gh release download "$GITHUB_REF_NAME" --dir redownload
+          gh release download "$RELEASE_TAG" --dir redownload
           python - <<'PY'
           import hashlib, pathlib
           local=pathlib.Path('dist'); remote=pathlib.Path('redownload')
@@ -85,6 +169,18 @@ jobs:
           print('verified GitHub assets:', ', '.join(sorted(actual)))
           PY
       - name: Publish verified release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release edit "$GITHUB_REF_NAME" --draft=false
+        run: gh release edit "$RELEASE_TAG" --draft=false
+      - name: Verify published release and tag binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --json isDraft,tagName,assets >/tmp/published-release.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/published-release.json',encoding='utf-8'))
+          expected={'graphlean-1.0.1.zip','graphlean-1.0.1.zip.sha256','graphlean-1.0.1.tgz','graphlean-1.0.1.tgz.sha256','SHA256SUMS.txt'}
+          assert d['isDraft'] is False
+          assert set(a['name'] for a in d['assets']) == expected
+          PY
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          [[ "$(git rev-list -n1 "$RELEASE_TAG")" == "$RELEASE_SHA" ]]
