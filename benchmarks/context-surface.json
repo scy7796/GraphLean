@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "product": "GraphLean",
+  "version": "1.0.0",
+  "modelVisibleControlTools": 5,
+  "modelVisibleJsonBytes": 1702,
+  "hostGraphTemplates": 10,
+  "hostGraphPayloadBytes": 49380,
+  "systemPromptPolicyInjectionBytes": 0,
+  "registeredHostGuards": 1,
+  "registeredHostEvents": [
+    "tools/pre-execute",
+    "tools/result"
+  ],
+  "note": "Byte counts cover GraphLean registered tool metadata and bundled graph JSON only; they are not tokenizer counts and do not include DeepSeek Harness base tools or provider messages."
+}
+

@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.9', '3.12']
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: node --check dsh/index.js
+      - run: node --check bin/graphleanctl.mjs
+      - run: node bin/graphleanctl.mjs --help
+      - run: npm pack --dry-run --json
+      - run: python -B -m unittest discover -s tests -v
+      - run: python -B SELFTEST.py
+
+  release-smoke:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: mkdir -p dist && python -B RELEASE.py --output-dir dist
+      - name: Verify release checksums
+        run: |
+          python - <<'PY'
+          import hashlib, pathlib
+          root=pathlib.Path('dist')
+          for sidecar in sorted(root.glob('*.sha256')):
+              expected,name=sidecar.read_text().split()[:2]
+              artifact=root/name
+              assert artifact.is_file(), artifact
+              assert hashlib.sha256(artifact.read_bytes()).hexdigest()==expected
+              print('verified', artifact.name)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graphlean-release-smoke
+          path: dist/
+

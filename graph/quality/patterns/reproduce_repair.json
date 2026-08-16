@@ -1,0 +1,18 @@
+{
+  "id": "reproduce_repair",
+  "description": "Independently reproduce baseline behavior and later verify candidate behavior in isolated copies.",
+  "allowed_operations": [
+    "discover_reproducibility"
+  ],
+  "allowed_roles": [
+    "worker"
+  ],
+  "allowed_join_policies": [
+    "all"
+  ],
+  "max_instances": 4,
+  "required_operations": [
+    "discover_reproducibility"
+  ]
+}
+

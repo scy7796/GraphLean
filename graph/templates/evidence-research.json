@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_evidence_research",
+  "version": 1,
+  "description": "evidence_research graph with bounded expansion and a dominant independent Advisor ReviewSlot.",
+  "activation": {
+    "required_signals": [
+      "cross_source_dependency",
+      "material_conflict",
+      "parallel_information_gain"
+    ],
+    "min_expected_gain": 0.15
+  },
+  "budgets": {
+    "max_nodes": 18,
+    "max_model_nodes": 10,
+    "max_edges": 24,
+    "max_parallel_calls": 3,
+    "max_tool_calls": 64,
+    "max_total_latency_ms": 1200000
+  },
+  "nodes": [
+    {
+      "id": "n_frame",
+      "type": "checkpoint",
+      "scope": "pin research question, source boundaries, and acceptance",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_plan",
+      "type": "operation",
+      "scope": "Root creates independent research directions",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_claim_pool",
+      "type": "reducer",
+      "scope": "preserve claims, conflicts, provenance, and gaps",
+      "authority": "external_action",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_coverage",
+      "type": "verifier",
+      "scope": "coverage and provenance check over raw evidence receipts",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_review",
+      "type": "verifier",
+      "scope": "research ReviewSlot decision",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_advisor",
+      "type": "operation",
+      "scope": "independent evidence and citation audit",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_root",
+      "type": "operation",
+      "scope": "Root synthesis from facts, conflicts, and gaps",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_citation",
+      "type": "verifier",
+      "scope": "bind every material claim to source location",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_verify_close",
+      "type": "verifier",
+      "scope": "final synthesis acceptance and closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_frame",
+      "to": "n_plan",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_plan",
+      "to": "n_claim_pool",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_claim_pool",
+      "to": "n_coverage",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_coverage",
+      "to": "n_review",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_review",
+      "to": "n_advisor",
+      "relation": "precedes",
+      "reason": "quality branch dependency"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_root",
+      "relation": "precedes",
+      "reason": "quality branch dependency"
+    },
+    {
+      "from": "n_root",
+      "to": "n_citation",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_citation",
+      "to": "n_verify_close",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_review",
+      "to": "n_root",
+      "relation": "precedes",
+      "reason": "selected quality branch dependency"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_plan",
+      "to": "n_frame",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_plan consumes the declared data contract from n_frame"
+    },
+    {
+      "from": "n_claim_pool",
+      "to": "n_plan",
+      "relation": "uses",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_claim_pool consumes the declared data contract from n_plan"
+    },
+    {
+      "from": "n_coverage",
+      "to": "n_claim_pool",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_coverage consumes the declared data contract from n_claim_pool"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_coverage",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_advisor consumes the declared data contract from n_coverage"
+    },
+    {
+      "from": "n_root",
+      "to": "n_claim_pool",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_root consumes the declared data contract from n_claim_pool"
+    },
+    {
+      "from": "n_citation",
+      "to": "n_root",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_citation consumes the declared data contract from n_root"
+    },
+    {
+      "from": "n_verify_close",
+      "to": "n_citation",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_verify_close consumes the declared data contract from n_citation"
+    }
+  ],
+  "stop_conditions": [
+    "advisor_unavailable",
+    "budget_exhausted",
+    "coverage_gap",
+    "no_new_evidence",
+    "unchanged_failure_cause",
+    "unverified_final_mutation"
+  ]
+}
+

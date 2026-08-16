@@ -1,0 +1,45 @@
+{
+  "name": "graphlean",
+  "version": "1.0.0",
+  "description": "Minimal-context, host-enforced execution graphs for DeepSeek Harness",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dsh/index.js",
+  "exports": "./dsh/index.js",
+  "files": [
+    "dsh/index.js",
+    "graph",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "bin/graphleanctl.mjs",
+    "graphleanctl.py",
+    "benchmarks",
+    "docs/RELEASE_VALIDATION.md",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "cordis",
+    "execution-graph",
+    "host-enforced",
+    "minimal-context",
+    "dag",
+    "agent-governance",
+    "ai-agents"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "bin": {
+    "graphleanctl": "./bin/graphleanctl.mjs"
+  }
+}
+

@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_work_dag",
+  "version": 1,
+  "description": "work_dag graph with bounded expansion and a dominant independent Advisor ReviewSlot.",
+  "activation": {
+    "required_signals": [
+      "cross_artifact_acceptance",
+      "explicit_join",
+      "independent_artifacts"
+    ],
+    "min_expected_gain": 0.2
+  },
+  "budgets": {
+    "max_nodes": 18,
+    "max_model_nodes": 9,
+    "max_edges": 24,
+    "max_parallel_calls": 4,
+    "max_tool_calls": 72,
+    "max_total_latency_ms": 1200000
+  },
+  "nodes": [
+    {
+      "id": "n_decompose",
+      "type": "operation",
+      "scope": "deterministic task decomposition and dependency declaration",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_join",
+      "type": "reducer",
+      "scope": "join only locally verified branch outputs",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_cross_verify",
+      "type": "verifier",
+      "scope": "cross-artifact acceptance and dependency validation",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_review",
+      "type": "verifier",
+      "scope": "DAG integration ReviewSlot decision",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_advisor",
+      "type": "operation",
+      "scope": "independent join and integration audit",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_integration",
+      "type": "operation",
+      "scope": "Root integrates verified task artifacts",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_close",
+      "type": "verifier",
+      "scope": "integrated artifact proof and closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_decompose",
+      "to": "n_join",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_join",
+      "to": "n_cross_verify",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_cross_verify",
+      "to": "n_review",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_review",
+      "to": "n_advisor",
+      "relation": "precedes",
+      "reason": "quality branch dependency"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_integration",
+      "relation": "precedes",
+      "reason": "quality branch dependency"
+    },
+    {
+      "from": "n_integration",
+      "to": "n_close",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_review",
+      "to": "n_integration",
+      "relation": "precedes",
+      "reason": "selected quality branch dependency"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_join",
+      "to": "n_decompose",
+      "relation": "uses",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_join consumes the declared data contract from n_decompose"
+    },
+    {
+      "from": "n_cross_verify",
+      "to": "n_join",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_cross_verify consumes the declared data contract from n_join"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_cross_verify",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_advisor consumes the declared data contract from n_cross_verify"
+    },
+    {
+      "from": "n_integration",
+      "to": "n_join",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_integration consumes the declared data contract from n_join"
+    },
+    {
+      "from": "n_close",
+      "to": "n_integration",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_close consumes the declared data contract from n_integration"
+    }
+  ],
+  "stop_conditions": [
+    "advisor_unavailable",
+    "artifact_identity_mismatch",
+    "budget_exhausted",
+    "dependency_mismatch",
+    "external_effect_replay_risk",
+    "unverified_final_mutation"
+  ]
+}
+

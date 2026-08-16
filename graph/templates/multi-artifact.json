@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_multi_artifact",
+  "version": 1,
+  "description": "Independent artifact production with explicit join, identity checks, final Root integration, and post-integration verification.",
+  "activation": {
+    "required_signals": [
+      "cross_artifact_acceptance",
+      "explicit_join",
+      "independent_artifacts"
+    ],
+    "min_expected_gain": 0.2
+  },
+  "budgets": {
+    "max_nodes": 8,
+    "max_model_nodes": 3,
+    "max_edges": 12,
+    "max_parallel_calls": 3,
+    "max_tool_calls": 48,
+    "max_total_latency_ms": 1200000
+  },
+  "nodes": [
+    {
+      "id": "n_plan",
+      "type": "operation",
+      "scope": "bounded artifact decomposition",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_artifact_a",
+      "type": "operation",
+      "scope": "artifact A",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_artifact_b",
+      "type": "operation",
+      "scope": "artifact B",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_join",
+      "type": "reducer",
+      "scope": "deterministic artifact identity and dependency join",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_verify",
+      "type": "verifier",
+      "scope": "cross-artifact acceptance",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_root",
+      "type": "operation",
+      "scope": "final integration",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_verify_close",
+      "type": "verifier",
+      "scope": "final integrated artifact identity, acceptance, and completion closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_plan",
+      "to": "n_artifact_a",
+      "relation": "precedes",
+      "reason": "plan precedes artifact A"
+    },
+    {
+      "from": "n_plan",
+      "to": "n_artifact_b",
+      "relation": "precedes",
+      "reason": "plan precedes artifact B"
+    },
+    {
+      "from": "n_artifact_a",
+      "to": "n_join",
+      "relation": "precedes",
+      "reason": "join waits for artifact A"
+    },
+    {
+      "from": "n_artifact_b",
+      "to": "n_join",
+      "relation": "precedes",
+      "reason": "join waits for artifact B"
+    },
+    {
+      "from": "n_join",
+      "to": "n_verify",
+      "relation": "precedes",
+      "reason": "verify joined identities and dependencies"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_root",
+      "relation": "verifies",
+      "reason": "final integration consumes verified artifacts"
+    },
+    {
+      "from": "n_root",
+      "to": "n_verify_close",
+      "relation": "precedes",
+      "reason": "the integrated artifact must be verified after Root writes it"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_join",
+      "to": "n_artifact_a",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "join reads artifact A receipt"
+    },
+    {
+      "from": "n_join",
+      "to": "n_artifact_b",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "join reads artifact B receipt"
+    },
+    {
+      "from": "n_root",
+      "to": "n_join",
+      "relation": "uses",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "Root uses joined verified artifacts"
+    },
+    {
+      "from": "n_verify_close",
+      "to": "n_root",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "closeout reads the final integrated Root artifact"
+    }
+  ],
+  "stop_conditions": [
+    "artifact_identity_mismatch",
+    "budget_exhausted",
+    "external_effect_replay_risk",
+    "unchanged_failure_cause",
+    "unverified_final_mutation"
+  ]
+}
+

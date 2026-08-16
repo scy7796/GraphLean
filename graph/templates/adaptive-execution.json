@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_adaptive_execution",
+  "version": 1,
+  "description": "adaptive_execution graph with bounded expansion and a dominant independent Advisor ReviewSlot.",
+  "activation": {
+    "required_signals": [
+      "graph_first_minimal_path"
+    ],
+    "min_expected_gain": 0.0
+  },
+  "budgets": {
+    "max_nodes": 12,
+    "max_model_nodes": 4,
+    "max_edges": 16,
+    "max_parallel_calls": 2,
+    "max_tool_calls": 32,
+    "max_total_latency_ms": 900000
+  },
+  "nodes": [
+    {
+      "id": "n_frame",
+      "type": "checkpoint",
+      "scope": "pin objective, constraints, authority, and acceptance",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_root",
+      "type": "operation",
+      "scope": "model-tool-environment execution loop",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_freeze",
+      "type": "checkpoint",
+      "scope": "freeze candidate and target snapshot before verification",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_verify",
+      "type": "verifier",
+      "scope": "semantic acceptance and target coverage verification",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_review",
+      "type": "verifier",
+      "scope": "deterministic ReviewSlot policy decision",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_advisor",
+      "type": "operation",
+      "scope": "independent read-only execution critique",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_repair",
+      "type": "operation",
+      "scope": "one evidence-driven bounded repair generation",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_reverify",
+      "type": "verifier",
+      "scope": "fresh verification after one repair generation",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": true
+    },
+    {
+      "id": "n_close",
+      "type": "verifier",
+      "scope": "final proof, review, and completion closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_frame",
+      "to": "n_root",
+      "relation": "precedes",
+      "reason": "pinned task precedes Root"
+    },
+    {
+      "from": "n_root",
+      "to": "n_freeze",
+      "relation": "precedes",
+      "reason": "candidate is frozen"
+    },
+    {
+      "from": "n_freeze",
+      "to": "n_verify",
+      "relation": "precedes",
+      "reason": "frozen candidate is verified"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_review",
+      "relation": "precedes",
+      "reason": "review follows verification"
+    },
+    {
+      "from": "n_review",
+      "to": "n_advisor",
+      "relation": "precedes",
+      "reason": "selected high-risk review branch"
+    },
+    {
+      "from": "n_review",
+      "to": "n_close",
+      "relation": "precedes",
+      "reason": "minimal branch close dependency"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_repair",
+      "relation": "precedes",
+      "reason": "selected repair branch"
+    },
+    {
+      "from": "n_repair",
+      "to": "n_reverify",
+      "relation": "precedes",
+      "reason": "selected repair branch dependency"
+    },
+    {
+      "from": "n_reverify",
+      "to": "n_close",
+      "relation": "verifies",
+      "reason": "reverify before close"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_close",
+      "relation": "precedes",
+      "reason": "selected quality branch dependency"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_root",
+      "to": "n_frame",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_root consumes the declared data contract from n_frame"
+    },
+    {
+      "from": "n_freeze",
+      "to": "n_root",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_freeze consumes the declared data contract from n_root"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_freeze",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_verify consumes the declared data contract from n_freeze"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_verify",
+      "relation": "uses",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_advisor consumes the declared data contract from n_verify"
+    },
+    {
+      "from": "n_repair",
+      "to": "n_advisor",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_repair consumes the declared data contract from n_advisor"
+    },
+    {
+      "from": "n_close",
+      "to": "n_reverify",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_close consumes the declared data contract from n_reverify"
+    }
+  ],
+  "stop_conditions": [
+    "acceptance_missing",
+    "advisor_unavailable",
+    "artifact_identity_mismatch",
+    "authority_boundary_reached",
+    "budget_exhausted",
+    "unverified_final_mutation",
+    "verification_failed"
+  ]
+}
+

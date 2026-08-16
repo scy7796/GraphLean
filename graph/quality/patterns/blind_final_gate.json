@@ -1,0 +1,26 @@
+{
+  "id": "blind_final_gate",
+  "description": "Fresh-context final review in an isolated artifact view followed by a deterministic release gate.",
+  "allowed_operations": [
+    "blind_final_(intent|correctness|counterexample|reproduction|simplicity|domain)",
+    "release_gate"
+  ],
+  "allowed_roles": [
+    "worker",
+    "native"
+  ],
+  "allowed_join_policies": [
+    "all"
+  ],
+  "max_instances": 12,
+  "required_operations": [
+    "blind_final_intent",
+    "blind_final_correctness",
+    "blind_final_counterexample",
+    "blind_final_reproduction",
+    "blind_final_simplicity",
+    "blind_final_domain",
+    "release_gate"
+  ]
+}
+

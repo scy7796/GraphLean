@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_hypothesis_diagnosis",
+  "version": 1,
+  "description": "hypothesis_diagnosis graph with bounded expansion and a dominant independent Advisor ReviewSlot.",
+  "activation": {
+    "required_signals": [
+      "competing_hypotheses",
+      "information_gain",
+      "unknown_root_cause"
+    ],
+    "min_expected_gain": 0.18
+  },
+  "budgets": {
+    "max_nodes": 16,
+    "max_model_nodes": 7,
+    "max_edges": 22,
+    "max_parallel_calls": 3,
+    "max_tool_calls": 56,
+    "max_total_latency_ms": 1200000
+  },
+  "nodes": [
+    {
+      "id": "n_frame",
+      "type": "checkpoint",
+      "scope": "pin symptoms, invariants, and authority",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_hypotheses",
+      "type": "operation",
+      "scope": "generate 2-3 falsifiable competing hypotheses",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_matrix",
+      "type": "reducer",
+      "scope": "update evidence and information gain for each hypothesis",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_review",
+      "type": "verifier",
+      "scope": "diagnostic ReviewSlot decision",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_advisor",
+      "type": "operation",
+      "scope": "challenge winner, probes, and information gain",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_intervention",
+      "type": "operation",
+      "scope": "one minimal reversible intervention",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_verify",
+      "type": "verifier",
+      "scope": "verify intervention and root-cause claim",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": true
+    },
+    {
+      "id": "n_reframe",
+      "type": "operation",
+      "scope": "reframe the question once after no information gain",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_close",
+      "type": "verifier",
+      "scope": "honest diagnosis/stop closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_frame",
+      "to": "n_hypotheses",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_hypotheses",
+      "to": "n_matrix",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_matrix",
+      "to": "n_review",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_review",
+      "to": "n_advisor",
+      "relation": "precedes",
+      "reason": "quality branch dependency"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_intervention",
+      "relation": "precedes",
+      "reason": "quality branch dependency"
+    },
+    {
+      "from": "n_intervention",
+      "to": "n_verify",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_reframe",
+      "relation": "precedes",
+      "reason": "base quality topology"
+    },
+    {
+      "from": "n_reframe",
+      "to": "n_close",
+      "relation": "precedes",
+      "reason": "quality branch dependency"
+    },
+    {
+      "from": "n_review",
+      "to": "n_intervention",
+      "relation": "precedes",
+      "reason": "selected quality branch dependency"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_close",
+      "relation": "verifies",
+      "reason": "conditional quality route"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_close",
+      "relation": "precedes",
+      "reason": "mandatory close dependency whether the optional intervention bundle is skipped or selected"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_hypotheses",
+      "to": "n_frame",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_hypotheses consumes the declared data contract from n_frame"
+    },
+    {
+      "from": "n_matrix",
+      "to": "n_hypotheses",
+      "relation": "uses",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_matrix consumes the declared data contract from n_hypotheses"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_matrix",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_advisor consumes the declared data contract from n_matrix"
+    },
+    {
+      "from": "n_intervention",
+      "to": "n_advisor",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_intervention consumes the declared data contract from n_advisor"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_intervention",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_verify consumes the declared data contract from n_intervention"
+    },
+    {
+      "from": "n_close",
+      "to": "n_verify",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_close consumes the declared data contract from n_verify"
+    }
+  ],
+  "stop_conditions": [
+    "advisor_unavailable",
+    "authority_boundary_reached",
+    "budget_exhausted",
+    "no_new_evidence",
+    "reframe_exhausted",
+    "stuck_no_information_gain"
+  ]
+}
+

@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_quality_improvement",
+  "version": 1,
+  "description": "quality-improvement graph: discovery -> claim/evidence -> candidate tournament -> reproduce/repair -> dispute experiment -> blind review -> verify -> close. Not part of routine routing; activated only by an explicit user quality-improvement request.",
+  "activation": {
+    "required_signals": [
+      "explicit_quality_improvement_request"
+    ],
+    "min_expected_gain": 0.0
+  },
+  "budgets": {
+    "max_nodes": 14,
+    "max_model_nodes": 6,
+    "max_edges": 22,
+    "max_parallel_calls": 6,
+    "max_tool_calls": 64,
+    "max_total_latency_ms": 1800000
+  },
+  "nodes": [
+    {
+      "id": "n_frame",
+      "type": "checkpoint",
+      "scope": "pin objective, constraints, authority, and quality-improvement trigger",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_discover",
+      "type": "operation",
+      "scope": "run independent discovery lanes over the artifact (map) and merge findings (reduce)",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_claims",
+      "type": "operation",
+      "scope": "bind each finding to evidence refs, severity, and reproduction status",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_candidates",
+      "type": "operation",
+      "scope": "construct minimal and structural candidate fixes with bounded diffs",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_repair",
+      "type": "operation",
+      "scope": "reproduce each candidate against the frozen baseline; repair only within candidate scope",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_dispute",
+      "type": "operation",
+      "scope": "run discriminating experiments between competing explanations or candidates",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_review",
+      "type": "verifier",
+      "scope": "deterministic review: candidate diffs bounded, evidence bound, no baseline mutation",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_advisor",
+      "type": "operation",
+      "scope": "independent critic reviews the frozen candidates and evidence, not the Root summary",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_verify",
+      "type": "verifier",
+      "scope": "semantic acceptance and target coverage verification of the chosen improvement",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_close",
+      "type": "verifier",
+      "scope": "runtime close: only a verified improvement with bounded diff may close",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_frame",
+      "to": "n_discover",
+      "relation": "precedes",
+      "reason": "pinned task precedes discovery"
+    },
+    {
+      "from": "n_discover",
+      "to": "n_claims",
+      "relation": "precedes",
+      "reason": "findings feed claim/evidence binding"
+    },
+    {
+      "from": "n_claims",
+      "to": "n_candidates",
+      "relation": "precedes",
+      "reason": "evidence ledger feeds candidate construction"
+    },
+    {
+      "from": "n_candidates",
+      "to": "n_repair",
+      "relation": "precedes",
+      "reason": "candidate set feeds reproduce/repair"
+    },
+    {
+      "from": "n_repair",
+      "to": "n_dispute",
+      "relation": "precedes",
+      "reason": "repaired candidates feed dispute experiments"
+    },
+    {
+      "from": "n_dispute",
+      "to": "n_review",
+      "relation": "precedes",
+      "reason": "dispute matrix feeds deterministic review"
+    },
+    {
+      "from": "n_candidates",
+      "to": "n_advisor",
+      "relation": "precedes",
+      "reason": "selected advisor branch follows candidate generation"
+    },
+    {
+      "from": "n_review",
+      "to": "n_verify",
+      "relation": "precedes",
+      "reason": "review pass precedes verification"
+    },
+    {
+      "from": "n_advisor",
+      "to": "n_verify",
+      "relation": "precedes",
+      "reason": "advisor pass routes to verification"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_close",
+      "relation": "verifies",
+      "reason": "verified improvement closes"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_discover",
+      "to": "n_frame",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "discovery reads the frozen task"
+    },
+    {
+      "from": "n_claims",
+      "to": "n_discover",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "claims consume discovery findings"
+    },
+    {
+      "from": "n_candidates",
+      "to": "n_claims",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "candidates are built on the evidence ledger"
+    },
+    {
+      "from": "n_repair",
+      "to": "n_candidates",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "repair consumes candidate diffs"
+    },
+    {
+      "from": "n_dispute",
+      "to": "n_repair",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "disputes compare repaired candidates"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_review",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "verification consumes review decision"
+    }
+  ],
+  "stop_conditions": [
+    "acceptance_missing",
+    "artifact_identity_mismatch",
+    "budget_exhausted",
+    "no_new_evidence",
+    "unverified_final_mutation"
+  ]
+}
+

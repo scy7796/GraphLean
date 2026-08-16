@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "template_id",
+    "version",
+    "description",
+    "activation",
+    "budgets",
+    "nodes",
+    "control_edges",
+    "reliance_edges",
+    "stop_conditions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "template_id": {
+      "type": "string",
+      "pattern": "^gt_[A-Za-z0-9_-]{1,156}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "activation": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_signals",
+        "min_expected_gain"
+      ],
+      "properties": {
+        "required_signals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "min_expected_gain": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "budgets": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_nodes",
+        "max_model_nodes",
+        "max_edges",
+        "max_parallel_calls",
+        "max_tool_calls",
+        "max_total_latency_ms"
+      ],
+      "properties": {
+        "max_nodes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_model_nodes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_edges": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_parallel_calls": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_tool_calls": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_total_latency_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "scope",
+          "authority",
+          "uses_model",
+          "optional"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^n_[A-Za-z0-9_-]{1,156}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "evidence",
+              "capability",
+              "operation",
+              "verifier",
+              "reducer",
+              "approval",
+              "checkpoint"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "authority": {
+            "enum": [
+              "read_only",
+              "workspace_write",
+              "external_action"
+            ]
+          },
+          "uses_model": {
+            "type": "boolean"
+          },
+          "optional": {
+            "type": "boolean"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "control_edges": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "relation",
+          "reason"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^n_[A-Za-z0-9_-]{1,156}$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^n_[A-Za-z0-9_-]{1,156}$"
+          },
+          "relation": {
+            "enum": [
+              "precedes",
+              "verifies"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "reliance_edges": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "relation",
+          "source_grade",
+          "evidence_refs",
+          "reason"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^n_[A-Za-z0-9_-]{1,156}$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^n_[A-Za-z0-9_-]{1,156}$"
+          },
+          "relation": {
+            "enum": [
+              "depends_on",
+              "derived_from",
+              "invalidates",
+              "reads",
+              "uses",
+              "writes"
+            ]
+          },
+          "source_grade": {
+            "enum": [
+              "declared",
+              "inferred",
+              "observed"
+            ]
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "stop_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}
+

@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_evidence_audit",
+  "version": 1,
+  "description": "Sparse multi-source evidence audit with deterministic conflict preservation, one Root synthesis, and final artifact verification.",
+  "activation": {
+    "required_signals": [
+      "cross_source_dependency",
+      "material_conflict",
+      "parallel_information_gain"
+    ],
+    "min_expected_gain": 0.15
+  },
+  "budgets": {
+    "max_nodes": 8,
+    "max_model_nodes": 3,
+    "max_edges": 12,
+    "max_parallel_calls": 3,
+    "max_tool_calls": 40,
+    "max_total_latency_ms": 1200000
+  },
+  "nodes": [
+    {
+      "id": "n_sources",
+      "type": "evidence",
+      "scope": "independent source inspection",
+      "authority": "external_action",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_extract",
+      "type": "operation",
+      "scope": "structured evidence packet extraction",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_conflicts",
+      "type": "reducer",
+      "scope": "deterministic claim and conflict pooling",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_verify",
+      "type": "verifier",
+      "scope": "provenance and acceptance verification",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_root",
+      "type": "operation",
+      "scope": "final Root synthesis and artifact writing",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_verify_close",
+      "type": "verifier",
+      "scope": "final synthesis artifact identity, acceptance, and completion closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_sources",
+      "to": "n_extract",
+      "relation": "precedes",
+      "reason": "packets require inspected sources"
+    },
+    {
+      "from": "n_extract",
+      "to": "n_conflicts",
+      "relation": "precedes",
+      "reason": "reduction consumes structured packets"
+    },
+    {
+      "from": "n_conflicts",
+      "to": "n_verify",
+      "relation": "precedes",
+      "reason": "verification follows conflict-preserving reduction"
+    },
+    {
+      "from": "n_verify",
+      "to": "n_root",
+      "relation": "verifies",
+      "reason": "Root receives only accepted packets and unresolved conflicts"
+    },
+    {
+      "from": "n_root",
+      "to": "n_verify_close",
+      "relation": "precedes",
+      "reason": "the final Root synthesis artifact must be verified after it is written"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_extract",
+      "to": "n_sources",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "extractor reads inspected source scopes"
+    },
+    {
+      "from": "n_conflicts",
+      "to": "n_extract",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "reducer reads evidence packets"
+    },
+    {
+      "from": "n_root",
+      "to": "n_verify",
+      "relation": "uses",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "Root uses verified reduction output"
+    },
+    {
+      "from": "n_verify_close",
+      "to": "n_root",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "closeout reads the final Root synthesis artifact"
+    }
+  ],
+  "stop_conditions": [
+    "budget_exhausted",
+    "external_effect_replay_risk",
+    "no_new_evidence",
+    "unchanged_failure_cause",
+    "unverified_final_mutation"
+  ]
+}
+

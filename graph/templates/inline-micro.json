@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_inline_micro",
+  "version": 1,
+  "description": "Graph-first two-node execution shell: one Root operation followed by deterministic Verify/Close. It adds no worker, Skill, memory retrieval, or fanout requirement.",
+  "activation": {
+    "required_signals": [
+      "graph_first_minimal_path"
+    ],
+    "min_expected_gain": 0.0
+  },
+  "budgets": {
+    "max_nodes": 2,
+    "max_model_nodes": 1,
+    "max_edges": 2,
+    "max_parallel_calls": 1,
+    "max_tool_calls": 12,
+    "max_total_latency_ms": 600000
+  },
+  "nodes": [
+    {
+      "id": "n_root",
+      "type": "operation",
+      "scope": "direct Root execution under pinned constraints",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_verify_close",
+      "type": "verifier",
+      "scope": "acceptance, artifact identity, authority, and completion closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_root",
+      "to": "n_verify_close",
+      "relation": "precedes",
+      "reason": "closeout verifies the observed Root result"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_verify_close",
+      "to": "n_root",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "closeout reads Root outputs and proof references"
+    }
+  ],
+  "stop_conditions": [
+    "acceptance_missing",
+    "artifact_identity_mismatch",
+    "authority_boundary_reached",
+    "budget_exhausted"
+  ]
+}
+

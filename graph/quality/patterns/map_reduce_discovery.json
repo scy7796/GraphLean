@@ -1,0 +1,27 @@
+{
+  "id": "map_reduce_discovery",
+  "description": "Fan out independent discovery and domain-search lanes, then reduce typed outputs.",
+  "allowed_operations": [
+    "discover_(intent|correctness|counterexample|evidence|simplicity)",
+    "domain_search",
+    "reduce_findings_evidence_coverage"
+  ],
+  "allowed_roles": [
+    "worker",
+    "native"
+  ],
+  "allowed_join_policies": [
+    "all",
+    "timeout_partial"
+  ],
+  "max_instances": 48,
+  "required_operations": [
+    "discover_intent",
+    "discover_correctness",
+    "discover_counterexample",
+    "discover_evidence",
+    "discover_simplicity",
+    "reduce_findings_evidence_coverage"
+  ]
+}
+

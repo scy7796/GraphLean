@@ -1,0 +1,27 @@
+{
+  "id": "candidate_tournament",
+  "description": "Construct isolated minimal, structural and subtractive candidates; independently verify and settle exactly one.",
+  "allowed_operations": [
+    "build_candidate",
+    "verify_candidates",
+    "adjudicate_candidates",
+    "settle"
+  ],
+  "allowed_roles": [
+    "worker",
+    "reviewer",
+    "selector"
+  ],
+  "allowed_join_policies": [
+    "all",
+    "timeout_partial"
+  ],
+  "max_instances": 16,
+  "required_operations": [
+    "build_candidate",
+    "verify_candidates",
+    "adjudicate_candidates",
+    "settle"
+  ]
+}
+

@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_self_evolution",
+  "version": 2,
+  "description": "Host-governed self-evolution graph. An exact workspace-write action set is sealed as the candidate, tested/reviewed, bound to an out-of-band human approval token, applied only through exact approved calls, post-verified, and then retained or rolled back. No autonomous or unapproved apply path exists.",
+  "activation": {
+    "required_signals": [
+      "explicit_self_evolution_request"
+    ],
+    "min_expected_gain": 0.0
+  },
+  "budgets": {
+    "max_nodes": 13,
+    "max_model_nodes": 4,
+    "max_edges": 28,
+    "max_parallel_calls": 2,
+    "max_tool_calls": 64,
+    "max_total_latency_ms": 1800000
+  },
+  "nodes": [
+    {
+      "id": "n_observe",
+      "type": "checkpoint",
+      "scope": "freeze baseline identity, objective, acceptance criteria, and local-only evidence window",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_diagnose",
+      "type": "operation",
+      "scope": "derive bounded failure hypotheses from receipts and reproducible observations; no mutation",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_propose",
+      "type": "operation",
+      "scope": "produce at most two minimal candidate mutations with explicit expected gain and rollback boundary",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_baseline",
+      "type": "verifier",
+      "scope": "run frozen baseline evaluation and seal metrics before candidate execution",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_candidate",
+      "type": "operation",
+      "scope": "seal the exact proposed workspace-write action set as canonical hashes; no active mutation is permitted at this node",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_replay",
+      "type": "verifier",
+      "scope": "run paired deterministic replay against baseline and candidate",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_attack",
+      "type": "verifier",
+      "scope": "adversarial review for false completion, invariant loss, privacy regression, and overfit",
+      "authority": "read_only",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_decide",
+      "type": "verifier",
+      "scope": "accept candidate only when hard gates pass and measured utility is non-regressive",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_approval",
+      "type": "approval",
+      "scope": "require an out-of-band human approval token bound to run id and candidate hash",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_apply",
+      "type": "operation",
+      "scope": "apply the approved exact candidate with preimage backup and mutation manifest",
+      "authority": "workspace_write",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_postverify",
+      "type": "verifier",
+      "scope": "re-run acceptance and integrity checks on the exact applied bytes",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_retain",
+      "type": "checkpoint",
+      "scope": "record the post-verification retain/rollback decision; any rollback mutation must occur through an explicitly governed apply/repair graph rather than an implicit worker",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_close",
+      "type": "verifier",
+      "scope": "close only with verified retained release or verified rollback receipt",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_observe",
+      "to": "n_diagnose",
+      "relation": "precedes",
+      "reason": "n_observe must complete before n_diagnose"
+    },
+    {
+      "from": "n_diagnose",
+      "to": "n_propose",
+      "relation": "precedes",
+      "reason": "n_diagnose must complete before n_propose"
+    },
+    {
+      "from": "n_propose",
+      "to": "n_baseline",
+      "relation": "precedes",
+      "reason": "n_propose must complete before n_baseline"
+    },
+    {
+      "from": "n_baseline",
+      "to": "n_candidate",
+      "relation": "precedes",
+      "reason": "n_baseline must complete before n_candidate"
+    },
+    {
+      "from": "n_candidate",
+      "to": "n_replay",
+      "relation": "precedes",
+      "reason": "n_candidate must complete before n_replay"
+    },
+    {
+      "from": "n_replay",
+      "to": "n_attack",
+      "relation": "verifies",
+      "reason": "n_replay must complete before n_attack"
+    },
+    {
+      "from": "n_attack",
+      "to": "n_decide",
+      "relation": "verifies",
+      "reason": "n_attack must complete before n_decide"
+    },
+    {
+      "from": "n_decide",
+      "to": "n_approval",
+      "relation": "verifies",
+      "reason": "n_decide must complete before n_approval"
+    },
+    {
+      "from": "n_approval",
+      "to": "n_apply",
+      "relation": "precedes",
+      "reason": "n_approval must complete before n_apply"
+    },
+    {
+      "from": "n_apply",
+      "to": "n_postverify",
+      "relation": "precedes",
+      "reason": "n_apply must complete before n_postverify"
+    },
+    {
+      "from": "n_postverify",
+      "to": "n_retain",
+      "relation": "verifies",
+      "reason": "n_postverify must complete before n_retain"
+    },
+    {
+      "from": "n_retain",
+      "to": "n_close",
+      "relation": "precedes",
+      "reason": "n_retain must complete before n_close"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_diagnose",
+      "to": "n_observe",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_diagnose consumes sealed baseline"
+    },
+    {
+      "from": "n_propose",
+      "to": "n_diagnose",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_propose consumes diagnosis"
+    },
+    {
+      "from": "n_baseline",
+      "to": "n_observe",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_baseline consumes baseline identity"
+    },
+    {
+      "from": "n_candidate",
+      "to": "n_propose",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_candidate consumes candidate plan"
+    },
+    {
+      "from": "n_replay",
+      "to": "n_candidate",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_replay consumes staged candidate"
+    },
+    {
+      "from": "n_attack",
+      "to": "n_replay",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_attack consumes paired replay"
+    },
+    {
+      "from": "n_decide",
+      "to": "n_attack",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_decide consumes adversarial review"
+    },
+    {
+      "from": "n_approval",
+      "to": "n_decide",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_approval consumes accepted candidate"
+    },
+    {
+      "from": "n_apply",
+      "to": "n_approval",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_apply consumes human approval token"
+    },
+    {
+      "from": "n_postverify",
+      "to": "n_apply",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_postverify consumes applied bytes"
+    },
+    {
+      "from": "n_retain",
+      "to": "n_postverify",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_retain consumes post-verification"
+    },
+    {
+      "from": "n_close",
+      "to": "n_retain",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "n_close consumes retain or rollback receipt"
+    }
+  ],
+  "stop_conditions": [
+    "budget_exhausted",
+    "candidate_not_better",
+    "evidence_insufficient",
+    "manual_approval_missing",
+    "postverify_failed",
+    "privacy_regression",
+    "rollback_failed"
+  ]
+}
+

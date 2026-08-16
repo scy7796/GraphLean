@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "template_id": "gt_inline_advised",
+  "version": 1,
+  "description": "Bounded advised micro graph: frame, Root execution, deterministic DeltaAudit, one optional compact read-only advisor, one Root reconciliation, and deterministic closeout.",
+  "activation": {
+    "required_signals": [
+      "bounded_adversarial_review"
+    ],
+    "min_expected_gain": 0.08
+  },
+  "budgets": {
+    "max_nodes": 6,
+    "max_model_nodes": 3,
+    "max_edges": 12,
+    "max_parallel_calls": 2,
+    "max_tool_calls": 24,
+    "max_total_latency_ms": 900000
+  },
+  "nodes": [
+    {
+      "id": "n_frame",
+      "type": "checkpoint",
+      "scope": "pin objective, constraints, authority, and acceptance",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_root",
+      "type": "operation",
+      "scope": "direct Root execution under pinned constraints",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": false
+    },
+    {
+      "id": "n_delta",
+      "type": "verifier",
+      "scope": "deterministic mutation, scope, failure, and post-change verification audit",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    },
+    {
+      "id": "n_advisors",
+      "type": "operation",
+      "scope": "optional compact adversarial difference review",
+      "authority": "external_action",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_reconcile",
+      "type": "reducer",
+      "scope": "Root adjudication and at most one bounded correction",
+      "authority": "workspace_write",
+      "uses_model": true,
+      "optional": true
+    },
+    {
+      "id": "n_verify_close",
+      "type": "verifier",
+      "scope": "artifact identity, acceptance, residual risk, and completion closeout",
+      "authority": "read_only",
+      "uses_model": false,
+      "optional": false
+    }
+  ],
+  "control_edges": [
+    {
+      "from": "n_frame",
+      "to": "n_root",
+      "relation": "precedes",
+      "reason": "execution starts from pinned task state"
+    },
+    {
+      "from": "n_root",
+      "to": "n_delta",
+      "relation": "precedes",
+      "reason": "deterministic audit follows observed execution"
+    },
+    {
+      "from": "n_delta",
+      "to": "n_advisors",
+      "relation": "precedes",
+      "reason": "selected advisor branch follows residual review"
+    },
+    {
+      "from": "n_delta",
+      "to": "n_verify_close",
+      "relation": "precedes",
+      "reason": "minimal branch close dependency"
+    },
+    {
+      "from": "n_advisors",
+      "to": "n_reconcile",
+      "relation": "precedes",
+      "reason": "Root receives only difference capsules"
+    },
+    {
+      "from": "n_reconcile",
+      "to": "n_verify_close",
+      "relation": "precedes",
+      "reason": "selected correction branch must finish before close"
+    }
+  ],
+  "reliance_edges": [
+    {
+      "from": "n_delta",
+      "to": "n_root",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "DeltaAudit reads Root mutations and checks"
+    },
+    {
+      "from": "n_advisors",
+      "to": "n_delta",
+      "relation": "uses",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "advisors receive the compact deterministic audit packet"
+    },
+    {
+      "from": "n_reconcile",
+      "to": "n_advisors",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "Root reconciles advisor differences against artifacts"
+    },
+    {
+      "from": "n_verify_close",
+      "to": "n_reconcile",
+      "relation": "reads",
+      "source_grade": "declared",
+      "evidence_refs": [],
+      "reason": "closeout reads the final corrected state when reconciliation ran"
+    }
+  ],
+  "stop_conditions": [
+    "acceptance_missing",
+    "advisor_deadline_reached",
+    "authority_boundary_reached",
+    "budget_exhausted",
+    "unverified_final_mutation"
+  ]
+}
+

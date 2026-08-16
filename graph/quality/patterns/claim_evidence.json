@@ -1,0 +1,18 @@
+{
+  "id": "claim_evidence",
+  "description": "Synthesize a temporary professional procedure only from typed upstream evidence.",
+  "allowed_operations": [
+    "synthesize_domain_capsule"
+  ],
+  "allowed_roles": [
+    "reviewer"
+  ],
+  "allowed_join_policies": [
+    "timeout_partial"
+  ],
+  "max_instances": 16,
+  "required_operations": [
+    "synthesize_domain_capsule"
+  ]
+}
+
