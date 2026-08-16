@@ -6,7 +6,7 @@ on:
     types: [completed]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   preflight:
@@ -99,6 +99,8 @@ jobs:
   release:
     needs: [preflight, test]
     if: needs.preflight.outputs.should_release == 'true'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     env:
       PYTHONDONTWRITEBYTECODE: '1'
@@ -143,7 +145,7 @@ jobs:
             gh release delete "$RELEASE_TAG" --yes
           fi
           prerelease=()
-          [[ "$RELEASE_TAG" == *-rc.* ]] && prerelease=(--prerelease)
+          [[ "$RELEASE_TAG" == *-* ]] && prerelease=(--prerelease)
           gh release create "$RELEASE_TAG" \
             dist/graphlean-*.zip \
             dist/graphlean-*.zip.sha256 \
