@@ -23,4 +23,3 @@ body:
     id: observed
     attributes: { label: Observed host decision }
     validations: { required: true }
-

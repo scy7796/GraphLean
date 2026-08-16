@@ -7,7 +7,7 @@ from pathlib import Path
 import graphleanctl
 
 ROOT=Path(__file__).resolve().parent
-VERSION='1.0.0'; MARK_BEGIN='# GRAPHLEAN_V1_0_0_BEGIN'; MARK_END='# GRAPHLEAN_V1_0_0_END'; META_NAME='.graphlean-installer-v1.0.0'
+VERSION='1.0.1'; MARK_BEGIN='# GRAPHLEAN_V1_0_1_BEGIN'; MARK_END='# GRAPHLEAN_V1_0_1_END'; META_NAME='.graphlean-installer-v1.0.1'
 BACKUP_ID=re.compile(r'^\d{8}T\d{6}\.\d{6}Z-[0-9a-f]{8}$')
 def home_fingerprint(home: Path): return hashlib.sha256(str(home).encode('utf-8')).hexdigest()
 def file_sha(p: Path): return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -96,8 +96,11 @@ def bundle_test():
  print('PASS official DSH bundle manifest/patch validation')
 
 def main():
- ap=argparse.ArgumentParser(); ap.add_argument('--target',help='DSH_HOME to validate after installation'); ap.add_argument('--probe-dsh',action='store_true'); ap.add_argument('--profile',default='web'); args=ap.parse_args()
- rc=graphleanctl.cmd_selftest(ROOT)
+ ap=argparse.ArgumentParser(); ap.add_argument('--target',help='DSH_HOME to validate after installation'); ap.add_argument('--probe-dsh',action='store_true'); ap.add_argument('--profile',default='web'); ap.add_argument('--source-tree',action='store_true',help='validate a Git/source checkout instead of a staged release payload'); args=ap.parse_args()
+ has_manifest=(ROOT/'MANIFEST.json').is_file(); has_checksums=(ROOT/'CHECKSUMS.sha256').is_file()
+ if has_manifest != has_checksums: raise RuntimeError('partial release integrity metadata')
+ source_tree=args.source_tree or not has_manifest
+ rc=graphleanctl.cmd_selftest(ROOT, source_tree=source_tree)
  if rc:return rc
  bundle_test()
  if args.probe_dsh and not args.target: raise RuntimeError('--probe-dsh requires --target DSH_HOME')
@@ -108,4 +111,3 @@ def main():
 if __name__=='__main__':
  try: raise SystemExit(main())
  except Exception as e: print(f'FAIL {e}',file=sys.stderr); raise SystemExit(1)
-

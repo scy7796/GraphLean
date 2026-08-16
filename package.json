@@ -1,6 +1,6 @@
 {
   "name": "graphlean",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Minimal-context, host-enforced execution graphs for DeepSeek Harness",
   "license": "MIT",
   "type": "module",
@@ -42,4 +42,3 @@
     "graphleanctl": "./bin/graphleanctl.mjs"
   }
 }
-

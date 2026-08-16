@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse, hashlib, json, os, re, secrets, shutil, sys
 from pathlib import Path
-VERSION='1.0.0'; MARK_BEGIN='# GRAPHLEAN_V1_0_0_BEGIN'; MARK_END='# GRAPHLEAN_V1_0_0_END'; META_NAME='.graphlean-installer-v1.0.0'
+VERSION='1.0.1'; MARK_BEGIN='# GRAPHLEAN_V1_0_1_BEGIN'; MARK_END='# GRAPHLEAN_V1_0_1_END'; META_NAME='.graphlean-installer-v1.0.1'
 BACKUP_ID=re.compile(r'^\d{8}T\d{6}\.\d{6}Z-[0-9a-f]{8}$')
 
 def file_sha(p: Path): h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
@@ -137,4 +137,3 @@ def main(argv=None):
 if __name__=='__main__':
  try: raise SystemExit(main())
  except Exception as e: print(f'ERROR: {e}',file=sys.stderr); raise SystemExit(2)
-

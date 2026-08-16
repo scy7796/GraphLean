@@ -15,7 +15,7 @@ RELIANCE = {"reads","writes","uses","depends_on","derived_from","invalidates"}
 GRADES = {"declared","inferred","observed"}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 RUN_ID = re.compile(r"^run_[0-9a-f]{24}$")
-RELEASE_VERSION = "1.0.0"
+RELEASE_VERSION = "1.0.1"
 
 class ValidationError(ValueError): pass
 
@@ -148,8 +148,8 @@ def validate_patterns(root: Path=ROOT):
         if unmatched: raise ValidationError(f"{p.name}: required_operations not covered by allowed_operations: {unmatched}")
         if isinstance(d["max_instances"],bool) or not isinstance(d["max_instances"],int) or d["max_instances"]<1: raise ValidationError(f"{p.name}: invalid max_instances")
 
-def release_privacy_scan(root: Path=ROOT):
-    forbidden_dirs={"__pycache__",".pytest_cache",".git"}
+def _privacy_scan(root: Path, ignored_parts=frozenset(), reject_ignored=False):
+    forbidden_dirs={"__pycache__",".pytest_cache",".git","dist","build"}
     forbidden_suffix={".pyc",".pyo",".p12",".pfx",".pem",".key"}
     forbidden_names={".env",".env.local",".env.production",".npmrc",".pypirc",".netrc",".git-credentials","credentials.json","service-account.json","id_rsa","id_ed25519"}
     text_rx=[
@@ -161,8 +161,12 @@ def release_privacy_scan(root: Path=ROOT):
     issues=[]
     for p in root.rglob("*"):
         rel=p.relative_to(root)
+        if any(part in ignored_parts for part in rel.parts):
+            continue
         if p.is_symlink(): issues.append(f"forbidden symlink: {rel}"); continue
-        if any(part in forbidden_dirs for part in rel.parts): issues.append(f"forbidden path: {rel}"); continue
+        if any(part in forbidden_dirs for part in rel.parts):
+            if reject_ignored or not any(part in ignored_parts for part in rel.parts): issues.append(f"forbidden path: {rel}")
+            continue
         if p.name.lower() in forbidden_names: issues.append(f"forbidden secret-bearing filename: {rel}"); continue
         if p.is_file() and p.suffix.lower() in forbidden_suffix: issues.append(f"forbidden file: {rel}"); continue
         if p.is_file() and p.stat().st_size<=2_000_000:
@@ -171,6 +175,17 @@ def release_privacy_scan(root: Path=ROOT):
             for rx in text_rx:
                 if rx.search(text): issues.append(f"privacy pattern {rx.pattern!r}: {rel}")
     return sorted(set(issues))
+
+
+def source_privacy_scan(root: Path=ROOT):
+    # A source checkout legitimately contains VCS metadata and may contain generated
+    # local release output. Scan the source payload, not the developer substrate.
+    return _privacy_scan(root, ignored_parts=frozenset({".git","dist","build","__pycache__",".pytest_cache"}))
+
+
+def release_privacy_scan(root: Path=ROOT):
+    # A staged/final release must be self-contained and may not contain VCS/build state.
+    return _privacy_scan(root, ignored_parts=frozenset(), reject_ignored=True)
 
 
 def _safe_release_rel(rel: str) -> bool:
@@ -299,7 +314,7 @@ def approve(state_root: Path, run_id: str, candidate_hash: str):
             except OSError: pass
     return path
 
-def cmd_selftest(root: Path):
+def cmd_selftest(root: Path, source_tree: bool=False):
     failures=[]
     files=template_files(root)
     if len(files)!=10: failures.append(f"expected 10 executable graph templates, found {len(files)}")
@@ -308,14 +323,16 @@ def cmd_selftest(root: Path):
         except Exception as e: failures.append(f"{p.relative_to(root)}: {e}")
     try: validate_patterns(root)
     except Exception as e: failures.append(str(e))
-    issues=release_privacy_scan(root)
+    issues=source_privacy_scan(root) if source_tree else release_privacy_scan(root)
     failures.extend(issues)
-    try: verify_release_manifest(root)
-    except Exception as e: failures.append(str(e))
+    if not source_tree:
+        try: verify_release_manifest(root)
+        except Exception as e: failures.append(str(e))
     if failures:
         for x in failures: print("FAIL",x)
         return 1
-    print(f"PASS templates={len(files)} quality_patterns=6 privacy=clean")
+    mode="source" if source_tree else "release"
+    print(f"PASS mode={mode} templates={len(files)} quality_patterns=6 privacy=clean")
     return 0
 
 def main(argv=None):
@@ -349,4 +366,3 @@ def main(argv=None):
         print(f"ERROR: {e}",file=sys.stderr); return 2
     return 2
 if __name__=="__main__": raise SystemExit(main())
-

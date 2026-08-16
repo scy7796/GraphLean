@@ -1,30 +1,36 @@
-# GraphLean v1.0.0
+# GraphLean v1.0.1
 
-**GraphLean v1.0.0** is the first public release. It provides minimal-context execution graphs with host-enforced constraints for DeepSeek Harness.
+v1.0.1 is a release-engineering and compatibility-precision patch for **GraphLean**, the minimal-context host-enforced execution-graph layer for DeepSeek Harness.
 
-The graph, policy checks, budgets, approvals and runtime state remain in the host. In v1.0.0, the model-visible control surface is five tools with 1,702 bytes of serialized tool metadata; the ten executable graph templates occupy 49,380 bytes on the host side. These are byte counts, not token counts.
+The host governance model remains fail-closed. This patch does not weaken shell/Code Mode/dynamic-execution denial or approval boundaries to make CI pass.
 
-At the host boundary, the release enforces graph progression, tool effect classes, workspace/control-plane boundaries, session isolation, privileged activation, admission-time parallel/total call budgets, result binding and approval-bound self-evolution.
+## What changed
 
-### Install
+- separated source-checkout privacy validation from strict staged-release validation;
+- stopped committing generated `dist/`, root `MANIFEST.json`, and root `CHECKSUMS.sha256`;
+- normalized repository text through `.gitattributes` with LF source bytes;
+- fixed cross-platform physical-path assertions for Windows 8.3 aliases and macOS `/var` → `/private/var` canonicalization;
+- corrected the context benchmark to the actual DSH native wire schema: five controls / **1,587 bytes**;
+- instrumented the **0-byte** system-prompt injection claim rather than hard-coding it;
+- clarified that fork/join dependencies are deterministically scheduled, not simultaneous branch execution;
+- clarified that `max_total_latency_ms` is an admission/advance deadline, not forced interruption of an already-running tool;
+- documented the DSH presentation boundary: `native` supported/recommended, `both` supported with `run_code` denied, pure `code` unsupported by the hard-governance profile;
+- made the tag workflow rerun the complete Windows/macOS/Linux × Python 3.9/3.12 matrix before release;
+- made GitHub Releases draft-first, then re-download and byte-verify uploaded assets before publishing.
+
+## Install
 
 Native DSH bundle:
 
 ```bash
-dsh plugin --profile web add ./graphlean-1.0.0.tgz
+dsh plugin --profile web add ./graphlean-1.0.1.tgz
 dsh --profile web --dump-config
 ```
 
-Transactional machine-wide install:
+Or use the transactional one-click installers in the source ZIP.
 
-```bash
-./INSTALL_UNIX.sh
-# Windows: INSTALL_WINDOWS.cmd
-```
+## Release boundary
 
-### Release boundary
+The GitHub tag workflow is the authority for hosted-release status. A local release build proves the staged artifact only; it is not represented as evidence for a later GitHub-hosted tag. A real DSH boot is claimed only when `dsh --profile <profile> --dump-config` is actually executed successfully on the target environment.
 
-The release pipeline passes 37/37 behavior/security/context/graph/privacy/installer tests. It also passes 10/10 executable graph validations and 6/6 quality-pattern validations; bundle inspection, deterministic packaging and transactional rollback passed as well. If the build machine has no real `dsh` executable, this release does not claim a real Harness boot. Run `SELFTEST.py --target <DSH_HOME> --probe-dsh --profile web` on the target machine for that check.
-
-For scope and limitations, see `README.md`, `SECURITY.md`, and `docs/RELEASE_VALIDATION.md`.
-
+See `README.md`, `SECURITY.md`, and `docs/RELEASE_VALIDATION.md` for the exact scope and limitations.
