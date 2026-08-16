@@ -65,7 +65,7 @@ class InstallerFaultInjectionTests(unittest.TestCase):
    state=home/'graphlean/state'; state.mkdir(); (state/'old.txt').write_text('old-state')
    mod=self.load_installer(); real_replace=mod.os.replace
    def fail_commit(src,dst):
-    if Path(src).name.startswith('.staging-') and Path(dst)==plugin: raise OSError('injected staging commit failure')
+    if Path(src).name.startswith('.staging-') and Path(dst).resolve()==plugin.resolve(): raise OSError('injected staging commit failure')
     return real_replace(src,dst)
    with patch.object(mod.os,'replace',side_effect=fail_commit):
     with self.assertRaises(OSError): mod.main(['--dsh-home',str(home)])
