@@ -8,9 +8,23 @@
 [![Node](https://img.shields.io/badge/Node-%5E22.19%20%7C%7C%20%3E%3D24-339933)](#compatibility)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-GraphLean keeps graph governance out of the model prompt and puts the parts that must be trusted into the DeepSeek Harness tool path.
+A graph in a prompt is advice. **GraphLean makes it part of the tool gate.**
 
-The model does not need a permanent policy essay describing graph order, write permissions, approval rules, budgets, session state, or rollback rules. Those stay in the host runtime. When an action violates them, GraphLean rejects the tool call at the host boundary instead of asking the model to remember not to do it.
+Graph order, write authority, approvals, budgets, session state and rollback rules stay in the DeepSeek Harness host instead of living as a permanent policy essay in model context. If the model asks for an action the active graph does not allow, GraphLean can reject that call before the tool runs.
+
+### Same graph. Different authority.
+
+```text
+Prompt-only graph
+verify -> write
+model skips verify -> write can still reach the tool
+
+GraphLean
+verify -> write
+model skips verify -> HOST DENY -> tool does not run
+```
+
+That is the project in one picture: **small model-visible governance surface, real host-side execution constraints.**
 
 Current v1.0.1 context-surface measurement:
 
