@@ -51,9 +51,11 @@ The hard-governance profile targets DSH native tool presentation. `both` mode ca
 
 The `ci` workflow runs on source pushes and pull requests. The `release` workflow listens to completed `ci` runs but admits release work only when the triggering run succeeded on `main` and its head SHA is still the current `main` head.
 
-The package version in that exact commit determines the immutable `v<version>` tag. If a published release for that version already exists, the workflow is a no-op. If an incomplete draft/tag exists from a prior failed publication attempt, it is accepted only when the tag resolves to the same CI-approved commit, allowing an idempotent retry without moving the tag.
+The package version in that exact commit determines the immutable `v<version>` tag. If a published release for that version already exists, the workflow is a no-op. A failed publication may leave a draft release and/or version tag; retry is allowed only if every existing tag resolves to the same CI-approved commit. A missing version tag is created only after the release artifacts have been built successfully.
 
-After admission, the release workflow independently reruns the full Windows/macOS/Linux × Python 3.9/3.12 matrix, creates or verifies the version tag on the approved commit, builds deterministic artifacts, creates a clean draft release, uploads the five expected assets, downloads those GitHub-hosted assets again, compares exact SHA-256 hashes, publishes the draft, and finally rechecks both the asset set and tag binding.
+After admission, the release workflow independently reruns the full Windows/macOS/Linux × Python 3.9/3.12 matrix, builds deterministic artifacts, creates or verifies the immutable version tag on the approved commit, removes any stale draft for that version, creates a fresh draft release against the verified tag, uploads the five expected assets, downloads those GitHub-hosted assets again, compares exact SHA-256 hashes, publishes the draft, and finally rechecks both the asset set and tag binding.
+
+A draft created before the real Git tag exists may be represented by GitHub with an internal `untagged-*` URL. The workflow does not treat that internal draft identifier as a release tag; recovery creates/verifies the real `v<version>` Git ref first and then replaces the stale draft.
 
 ## Local release evidence
 
