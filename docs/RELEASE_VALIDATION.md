@@ -6,7 +6,7 @@ This file records what the release gate proves and where the evidence stops. v1.
 
 The release is blocked unless all of the following pass:
 
-- the Windows/macOS/Linux × Python 3.9/3.12 tag matrix;
+- the Windows/macOS/Linux × Python 3.9/3.12 release matrix selected only after a successful `ci` run on the current `main` head;
 - all ten executable graphs against the runtime contract and Draft 2020-12 JSON Schema;
 - every legal optional-branch activation with exactly one root, one sink and a complete deterministic schedule;
 - all six quality-pattern descriptors;
@@ -18,7 +18,8 @@ The release is blocked unless all of the following pass:
 - the transactional installer install → validate → uninstall exact-preimage smoke, including fault injection;
 - `MANIFEST.json` and `CHECKSUMS.sha256` exactly covering the staged payload;
 - two independent npm packs and two deterministic source ZIP builds producing identical bytes;
-- GitHub Release assets being downloaded after upload and matching the locally staged asset hashes before the draft is published.
+- GitHub Release assets being downloaded after upload and matching the locally staged asset hashes before the draft is published;
+- the version tag resolving to the exact CI-approved `main` commit before and after publication.
 
 Generated `dist/`, `MANIFEST.json`, and `CHECKSUMS.sha256` are release outputs. They are not source-of-truth files committed to the repository.
 
@@ -46,9 +47,17 @@ GraphLean enforces fork/join dependency structure, but the current runtime advan
 
 The hard-governance profile targets DSH native tool presentation. `both` mode can be used, but `run_code` remains hard-denied. Pure `code` mode is not supported because its reserved `run_code` transport is intentionally outside GraphLean's allowed bounded native execution surface.
 
+## Hosted release selection and publication
+
+The `ci` workflow runs on source pushes and pull requests. The `release` workflow listens to completed `ci` runs but admits release work only when the triggering run succeeded on `main` and its head SHA is still the current `main` head.
+
+The package version in that exact commit determines the immutable `v<version>` tag. If a published release for that version already exists, the workflow is a no-op. If an incomplete draft/tag exists from a prior failed publication attempt, it is accepted only when the tag resolves to the same CI-approved commit, allowing an idempotent retry without moving the tag.
+
+After admission, the release workflow independently reruns the full Windows/macOS/Linux × Python 3.9/3.12 matrix, creates or verifies the version tag on the approved commit, builds deterministic artifacts, creates a clean draft release, uploads the five expected assets, downloads those GitHub-hosted assets again, compares exact SHA-256 hashes, publishes the draft, and finally rechecks both the asset set and tag binding.
+
 ## Local release evidence
 
-A release build must record the exact test totals and artifact hashes from `RELEASE.py`. The repository does not treat a historical local run as proof that a later GitHub tag or hosted asset passed. GitHub-hosted evidence is established only by the tag workflow for that exact commit.
+A local release build must record the exact test totals and artifact hashes from `RELEASE.py`. The repository does not treat a historical local run as proof that a later GitHub-hosted release passed. GitHub-hosted evidence is established only by the release workflow for the exact CI-approved `main` commit and version tag.
 
 ## Real DSH loader boundary
 
