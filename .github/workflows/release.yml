@@ -9,7 +9,32 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.9', '3.12']
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: node --check dsh/index.js
+      - run: node --check bin/graphleanctl.mjs
+      - run: npm pack --dry-run --json
+      - run: python -B -m unittest discover -s tests -v
+      - run: python -B SELFTEST.py --source-tree
+
   release:
+    needs: test
     runs-on: ubuntu-latest
     env:
       PYTHONDONTWRITEBYTECODE: '1'
@@ -22,7 +47,6 @@ jobs:
         with:
           node-version: '22.19.0'
       - run: python -m pip install -r requirements-dev.txt
-      - run: mkdir -p dist && python -B RELEASE.py --output-dir dist
       - name: Verify tag matches package version
         run: |
           python - <<'PY'
@@ -32,14 +56,35 @@ jobs:
           assert tag == 'v'+version, f'tag {tag} != package v{version}'
           print('tag/version match:', tag)
           PY
-      - uses: softprops/action-gh-release@v2
+      - run: mkdir -p dist && python -B RELEASE.py --output-dir dist
+      - name: Create draft release and upload staged assets
+        uses: softprops/action-gh-release@v2
         with:
           body_path: GITHUB_RELEASE.md
+          draft: true
           prerelease: ${{ contains(github.ref_name, '-rc.') }}
+          fail_on_unmatched_files: true
           files: |
             dist/graphlean-*.zip
             dist/graphlean-*.zip.sha256
             dist/graphlean-*.tgz
             dist/graphlean-*.tgz.sha256
             dist/SHA256SUMS.txt
-
+      - name: Re-download GitHub release assets and verify exact bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf redownload && mkdir redownload
+          gh release download "$GITHUB_REF_NAME" --dir redownload
+          python - <<'PY'
+          import hashlib, pathlib
+          local=pathlib.Path('dist'); remote=pathlib.Path('redownload')
+          expected={p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in local.iterdir() if p.is_file()}
+          actual={p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in remote.iterdir() if p.is_file()}
+          assert actual == expected, f'GitHub asset mismatch: expected={expected} actual={actual}'
+          print('verified GitHub assets:', ', '.join(sorted(actual)))
+          PY
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false
